@@ -169,4 +169,4 @@ def encode_and_pack_batch(batch_size, image_encoder, text_encoder, image_names, 
     # We simply use the entire sentence representation.
 
 
-    return image_encodings1, text_encodings1, image_encodings2, text_encodings1, np.array(y1_batch), np.array(y2_batch)
+    return image_encodings1, text_encodings1, image_encodings2, text_encodings1, text_encodings2, np.array(y2_batch)

@@ -8,7 +8,7 @@ from numpy import argmax
 import sys
 import getopt
 import pandas as pd
-from bert_embedding import BertEmbedding
+# from bert_embedding import BertEmbedding   #Remove if build pass
 
 
 def classification_loss(y_pred, y_true):

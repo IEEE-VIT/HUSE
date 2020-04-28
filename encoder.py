@@ -44,7 +44,7 @@ def get_universal_sentence_encoder():
 # BERT Model
 
 
-def get_bert(max_seq_len, ):
+def get_bert(max_seq_len):
     max_seq_length = max_seq_len 
 
     input_word_ids = tf.keras.layers.Input(shape=(max_seq_length,), dtype=tf.int32,
