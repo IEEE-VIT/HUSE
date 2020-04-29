@@ -46,7 +46,8 @@ def get_universal_sentence_encoder():
 
 def get_bert(max_seq_len):
     max_seq_length = max_seq_len 
-
+    load_tokenizer_workaround = hub.KerasLayer("https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/2",
+                                trainable=True)
     input_word_ids = tf.keras.layers.Input(shape=(max_seq_length,), dtype=tf.int32,
                                         name="input_word_ids")
     input_mask = tf.keras.layers.Input(shape=(max_seq_length,), dtype=tf.int32,
@@ -56,8 +57,9 @@ def get_bert(max_seq_len):
     bert_layer = hub.KerasLayer("https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/2",
                                 trainable=True)([input_word_ids, input_mask, segment_ids])
     model = keras.Model(inputs=[input_word_ids, input_mask, segment_ids], outputs = bert_layer)
-    vocab_file = bert_layer.resolved_object.vocab_file.asset_path.numpy()
-    do_lower_case = bert_layer.resolved_object.do_lower_case.numpy()
+
+    vocab_file = load_tokenizer_workaround.resolved_object.vocab_file.asset_path.numpy()
+    do_lower_case = load_tokenizer_workaround.resolved_object.do_lower_case.numpy()
     tokenizer = tokenization.FullTokenizer(vocab_file, do_lower_case)
 
     return tokenizer, model

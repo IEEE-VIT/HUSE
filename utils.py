@@ -164,13 +164,20 @@ def encode_and_pack_batch(batch_size, image_encoder, text_encoder, image_names, 
         #batch text
         inputid1, inputmask1, inputsegment1 = convert_sentences_to_features(text_list[indexes1[i]], tokenizer, 512)
         inputid2, inputmask2, inputsegment2 = convert_sentences_to_features(text_list[indexes2[i]], tokenizer, 512)
+        input_ids1.append(inputid1)
+        inputmask1.append(inputmask1)
+        segments1.append(inputsegment1)
+        input_ids1.append(inputid2)
+        inputmask1.append(inputmask2)
+        segments1.append(inputsegment2)
         # result1 = text_encoder(text_list[indexes1[i]])
         # resutl2 = text_encoder(text_list[indexes2[i]])
         # avg_array1 = avg_of_array(result1)
         # avg_array2 = avg_of_array(resutl2)
         # x1_text_batch.append(avg_array1)
         # x2_text_batch.append(avg_array2)
-
+    for inp in [np.array(input_ids1), np.array(masks1), np.array(segments1)]:
+        print(inp.shape)
     image_encodings1 = image_encoder(np.array(images1))
     image_encodings2 = image_encoder(np.array(images2)) 
     text_encodings1, _ = text_encoder([np.array(input_ids1), np.array(masks1), np.array(segments1)])
