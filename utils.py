@@ -53,7 +53,7 @@ def clean_text(text_list):
         sentence = sentence.split(' ')
         while("" in sentence):
             sentence.remove("")
-        text_list[i] = sentence
+        text_list[i] = ''.join(sentence)
     return text_list
 
 # Forked the following from https://github.com/vineetm/tfhub-bert

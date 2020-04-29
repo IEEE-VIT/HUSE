@@ -54,7 +54,7 @@ def get_bert(max_seq_len):
     segment_ids = tf.keras.layers.Input(shape=(max_seq_length,), dtype=tf.int32,
                                         name="segment_ids")
     bert_layer = hub.KerasLayer("https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/2",
-                                trainable=True)([input_word_ids,input_mask,segment_ids])
+                                trainable=True)
     
     vocab_file = bert_layer.resolved_object.vocab_file.asset_path.numpy()
     do_lower_case = bert_layer.resolved_object.do_lower_case.numpy()
