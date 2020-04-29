@@ -55,9 +55,9 @@ def get_bert(max_seq_len):
                                         name="segment_ids")
     bert_layer = hub.KerasLayer("https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/2",
                                 trainable=True)
-    
+    model = keras.Model(inputs=[input_word_ids, input_mask, segment_ids], outputs = bert_layer)
     vocab_file = bert_layer.resolved_object.vocab_file.asset_path.numpy()
     do_lower_case = bert_layer.resolved_object.do_lower_case.numpy()
     tokenizer = tokenization.FullTokenizer(vocab_file, do_lower_case)
 
-    return tokenizer, bert_layer
+    return tokenizer, model
