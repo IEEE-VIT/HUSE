@@ -145,7 +145,7 @@ def encode_and_pack_batch(batch_size, image_encoder, text_encoder, image_names, 
     # load images into images1 and images2, convert features to be fed to BERT and load into text_features1 and text_features2
     for i in range(batch_size):
 
-        #Batch images
+        # Batch images
         image_name1 = image_names[indexes1[i]]
         image_path1 = 'images/' + image_name1
         img1 = image.load_img(image_path1, target_size=img_shape)
@@ -157,34 +157,32 @@ def encode_and_pack_batch(batch_size, image_encoder, text_encoder, image_names, 
         images1.append(img1)
         images2.append(img2)
 
-        #batch labels
+        # batch labels
         y1_batch.append(training_classes[indexes1[i]])
         y2_batch.append(training_classes[indexes2[i]])
 
-        #batch text
-        inputid1, inputmask1, inputsegment1 = convert_sentences_to_features(text_list[indexes1[i]], tokenizer, 512)
-        inputid2, inputmask2, inputsegment2 = convert_sentences_to_features(text_list[indexes2[i]], tokenizer, 512)
+        # batch text
+        inputid1, inputmask1, inputsegment1 = convert_sentence_to_features(
+            text_list[indexes1[i]], tokenizer, 512)
+        inputid2, inputmask2, inputsegment2 = convert_sentence_to_features(
+            text_list[indexes2[i]], tokenizer, 512)
         input_ids1.append(inputid1)
-        inputmask1.append(inputmask1)
+        masks1.append(inputmask1)
         segments1.append(inputsegment1)
-        input_ids1.append(inputid2)
-        inputmask1.append(inputmask2)
-        segments1.append(inputsegment2)
-        # result1 = text_encoder(text_list[indexes1[i]])
-        # resutl2 = text_encoder(text_list[indexes2[i]])
-        # avg_array1 = avg_of_array(result1)
-        # avg_array2 = avg_of_array(resutl2)
-        # x1_text_batch.append(avg_array1)
-        # x2_text_batch.append(avg_array2)
+        input_ids2.append(inputid2)
+        masks2.append(inputmask2)
+        segments2.append(inputsegment2)
+
     for inp in [np.array(input_ids1), np.array(masks1), np.array(segments1)]:
         print(inp.shape)
     image_encodings1 = image_encoder(np.array(images1))
-    image_encodings2 = image_encoder(np.array(images2)) 
-    text_encodings1, _ = text_encoder([np.array(input_ids1), np.array(masks1), np.array(segments1)])
-    text_encodings2, _ = text_encoder([np.array(input_ids2), np.array(masks2), np.array(segments2)])
+    image_encodings2 = image_encoder(np.array(images2))
+    text_encodings1, _ = text_encoder(
+        [np.array(input_ids1), np.array(masks1), np.array(segments1)])
+    text_encodings2, _ = text_encoder(
+        [np.array(input_ids2), np.array(masks2), np.array(segments2)])
     # There are two outputs from text_encoder. First, is pooled output and second is sequence output
-    # [batch_size, , 768] 
-    # We simply use the entire sentence representation.
-
+    # [batch_size, , 768]
+    # We simply use the entire sequence representation.
 
     return image_encodings1, text_encodings1, image_encodings2, text_encodings2, np.array(y1_batch), np.array(y2_batch)

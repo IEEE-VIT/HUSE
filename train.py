@@ -73,7 +73,6 @@ def grad(model, x1, x2, y1, y2, loss_weights, graph_threshold, adj_graph):
 
 
 def main(argv):
-    IMAGE_DIRECTORY = '/images'
     CSV_FILE_PATH = 'data.csv'
     num_epochs = 250000
     BATCH_SIZE = 1
