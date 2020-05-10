@@ -6,9 +6,10 @@ import tensorflow as tf
 import numpy as np
 from numpy import argmax
 import sys
-import getopt
 import pandas as pd
 import time
+import configparser
+import argparse
 # from bert_embedding import BertEmbedding   #Remove if build pass
 
 
@@ -73,39 +74,26 @@ def grad(model, x1, x2, y1, y2, loss_weights, graph_threshold, adj_graph):
     return loss_value, tape.gradient(loss_value, model.trainable_variables)
 
 
-def main(argv):
-    CSV_FILE_PATH = 'data.csv'
-    num_epochs = 250000
-    BATCH_SIZE = 1
-    img_shape = (224, 224, 3)  # Reduce based on RAM
-    GRAPH_THRESHOLD = 0.5
-    LEARNING_RATE = 1.6192e-05
-
+def main(args):
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    CSV_FILE_PATH = config['DEFAULT']['CSV_FILE_PATH']
+    num_epochs = int(args.num_epochs)
+    print("Number of epochs set tp %d" %num_epochs)
+    IMAGES_PATH = config['DEFAULT']['IMAGES_PATH']
+    BATCH_SIZE = int(args.batch_size)
+    print("Batch_size set to %d" %BATCH_SIZE)
+    CHANNELS = int(config['DEFAULT']['CHANNELS'])  # Reduce based on RAM
+    IMG_SIZE = int(config['DEFAULT']['IMG_SIZE'])
+    img_shape = (IMG_SIZE, IMG_SIZE, CHANNELS)
+    GRAPH_THRESHOLD = float(config['DEFAULT']['GRAPH_THRESHOLD'])
+    LEARNING_RATE = float(config['DEFAULT']['LEARNING_RATE'])
+    IMAGE_ENCODER = config['DEFAULT']['IMAGE_ENCODER']
+    TEXT_ENCODER = config['DEFAULT']['TEXT_ENCODER']
     # Give importance to classification, semantic and gap loss respectively.
     LOSS_WEIGHTS = [0.6, 0.2, 0.2]
-    IMAGE_ENCODER = 'resnet50'
-    TEXT_ENCODER = 'bert'
-
-    try:
-        opts, args = getopt.getopt(
-            argv, "i:t:b:", ["image_encoder=", "text_encoder=", "batch_size="])
-    except getopt.GetoptError:
-        print('test -i <image_folder> -c <csv_filename>')
-        sys.exit(2)
-    for opt, arg in opts:
-        if opt == '-h':
-            print('test.py -i <inputfile> -o <outputfile>')
-            sys.exit()
-        elif opt in ("-i", "--image_encoder"):
-            IMAGE_ENCODER = arg
-        elif opt in ("-c", "--text_encoder"):
-            TEXT_ENCODER = arg
-        elif opt in ("-b", "--batch_size"):
-            BATCH_SIZE = int(arg)
-            print("Set batch_size to %d" % BATCH_SIZE)
 
     df = pd.read_csv(CSV_FILE_PATH)
-    num_samples = df.shape[0]
 
     class_names = df.classes.unique()
 
@@ -137,6 +125,7 @@ def main(argv):
         image_encoder_size = 2048
     elif (IMAGE_ENCODER == 'resnet101'):
         image_embedding_extractor_model = encoder.get_resnet101(img_shape)
+        image_encoder_size = 2048
     if (TEXT_ENCODER == 'bert'):
         tokenizer, text_embedding_extractor_model = encoder.get_bert(512)
         text_encoder_size = 768
@@ -144,41 +133,54 @@ def main(argv):
     complete_model = build_model(
         image_encoder_size, text_encoder_size, num_classes)
 
+    dataset1, dataset2 = utils.encode_and_pack_batch(
+        BATCH_SIZE, image_embedding_extractor_model, text_embedding_extractor_model, image_names, text_list, training_classes, img_shape, tokenizer, IMAGES_PATH)
+
     train_loss_results = []
+    validation_loss_results = []
     # train_accuracy_results = []
     # Define the optimize and specify the learning rate
     optimizer = tf.keras.optimizers.RMSprop(learning_rate=LEARNING_RATE)
-    epoch_time = []
+
     for epoch in range(num_epochs):
         epoch_start_time = time.time()
         epoch_loss_avg = tf.keras.metrics.Mean()
-        # epoch_accuracy = tf.keras.metrics.CategoricalAccuracy() #Uncomment if you want to track
-        # Training loop - using batches of 1024
-        # encode_and_pack_batch(batch_size, image_encoder, text_encoder, image_names, text_list, training_classes, img_shape):
-        xi1, xt1, xi2, xt2, y1, y2 = utils.encode_and_pack_batch(
-            BATCH_SIZE, image_embedding_extractor_model,  text_embedding_extractor_model, image_names, text_list, training_classes, img_shape,
-            tokenizer)
-        x1 = [xi1, xt1]
-        x2 = [xi2, xt2]
-        # Optimize the model
-        loss_value, grads = grad(
-            complete_model, x1, x2, y1, y2, LOSS_WEIGHTS, GRAPH_THRESHOLD, adj_graph_classes)
-        optimizer.apply_gradients(
-            zip(grads, complete_model.trainable_variables))
+        for batch1, batch2 in zip(dataset1, dataset2):
+            # epoch_accuracy = tf.keras.metrics.CategoricalAccuracy() #Uncomment if you want to track
+            # Training loop - using batches of 1024
+            # encode_and_pack_batch(batch_size, image_encoder, text_encoder, image_names, text_list, training_classes, img_shape):
+            xi1, xt1, y1 = batch1
+            xi2, xt2, y2 = batch2
+            x1 = [xi1, xt1]
+            x2 = [xi2, xt2]
+            # Optimize the model
+            loss_value, grads = grad(
+                complete_model, x1, x2, y1, y2, LOSS_WEIGHTS, GRAPH_THRESHOLD, adj_graph_classes)
+            optimizer.apply_gradients(
+                zip(grads, complete_model.trainable_variables))
 
         # Track progress
         epoch_loss_avg.update_state(loss_value)  # Add current batch loss
-
+        
         # End epoch
         train_loss_results.append(epoch_loss_avg.result())
         epoch_end_time = time.time()
-        epoch_time.append((epoch_end_time-epoch_start_time))
-        if epoch % 5 == 0:
-            print("Average Epoch time: %s seconds." %str(np.sum(epoch_time)/5))
-            epoch_time = []
-            print("Epoch {:03d}: Loss: {:.3f}".format(
-                epoch, epoch_loss_avg.result()))
+        print("Epoch {:03d}: Loss: {:.3f}".format(
+            epoch, epoch_loss_avg.result()))
+        print("Time for epoch: %f" % (epoch_end_time-epoch_start_time))
+        if (np.round((epoch/num_epochs),1)==0.5):
+            print("Saving model")
+            complete_model.save('model_half_trained.md5')
+    # serialize model to HDF5
+    complete_model.save("model.h5")
+    print("Saved model to disk")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    parser = argparse.ArgumentParser(description='Train and save the model.')
+    parser.add_argument('-b', '--batch_size', type=int,
+                        help='Specify the batch size', default='1024')
+    parser.add_argument('-e', '--num_epochs', type=int,
+                        help='Specify nuber of epochs', default='250000')
+    args = parser.parse_args()
+    main(args)
